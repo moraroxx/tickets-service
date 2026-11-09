@@ -74,10 +74,33 @@ jobs:
             python:3.12.7-slim \
             python -m unittest discover -s tests -v
 
+
   package:
     name: Подготовка пакета
     runs-on: ubuntu-latest
     needs: unit_tests
+
+    steps:
+      - name: Получение проекта
+        uses: actions/checkout@v4
+
+      - name: Формирование пакета
+        run: |
+          mkdir -p dist
+          cp tickets.py README.md Dockerfile tickets.csv.example dist/
+
+          echo "CI_COMMIT_SHA=$GITHUB_SHA" > dist/manifest.txt
+          echo "CI_PIPELINE_ID=$GITHUB_RUN_ID" >> dist/manifest.txt
+          echo "FILES:" >> dist/manifest.txt
+          printf '%s\n' tickets.py README.md Dockerfile tickets.csv.example >> dist/manifest.txt
+
+      - name: Публикация артефакта
+        uses: actions/upload-artifact@v4
+        with:
+          name: tickets-service-package
+          path: dist/
+          retention-days: 7
+
 
     steps:
       - name: Получение проекта
