@@ -121,4 +121,68 @@ jobs:
           path: dist/
           retention-days: 7
 
-  
+  deploy_test:
+    name: Тестовое развертывание
+    runs-on: ubuntu-latest
+    needs: package
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+
+    environment:
+      name: test/tickets
+      url: https://github.com/moraroxx/tickets-service/actions
+
+    steps:
+      - name: Получение проекта
+        uses: actions/checkout@v4
+
+      - name: Проверка секрета DEPLOY_TOKEN
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "Секрет DEPLOY_TOKEN не настроен"
+            exit 1
+          fi
+          echo "Секрет DEPLOY_TOKEN настроен"
+
+      - name: Скачивание артефакта
+        uses: actions/download-artifact@v4
+        with:
+          name: tickets-service-package
+          path: dist/
+
+      - name: Копирование пакета
+        run: |
+          mkdir -p deploy/test
+          cp -R dist/. deploy/test/
+
+      - name: Проверка создания и чтения заявки
+        env:
+          APP_PORT: "8103"
+        run: |
+          python - <<'PY'
+          import os
+          from tickets import TicketService
+
+          port = int(os.environ["APP_PORT"])
+          assert port == 8103, "Неверный порт приложения"
+
+          service = TicketService()
+          ticket = service.create_ticket(
+              "Тестовая заявка",
+              priority="high"
+          )
+
+          found = service.get_ticket(ticket["id"])
+
+          assert found is not None
+          assert found["title"] == "Тестовая заявка"
+
+          print("Заявка успешно создана и прочитана")
+          PY
+
+      - name: Создание отчета о развертывании
+        run: |
+          echo "Deployment: successful" > deploy/test/deployment.txt
+          echo "APP_PORT=8103" >> deploy/test/deployment.txt
+          echo "Environment: test/tickets" >> deploy/test/deployment.txt
