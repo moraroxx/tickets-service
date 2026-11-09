@@ -3,7 +3,16 @@ name: Проверка сервиса заявок
 
 on:
   push:
+    branches:
+      - main
+      - 'hotfix/**'
+    tags:
+      - '*'
   pull_request:
+    branches:
+      - main
+      - 'hotfix/**'
+  workflow_dispatch:
 
 jobs:
   validate:
@@ -13,6 +22,16 @@ jobs:
     steps:
       - name: Получение проекта
         uses: actions/checkout@v4
+
+      - name: Проверка наличия DEPLOY_TOKEN
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_TOKEN" ]; then
+            echo "Секрет DEPLOY_TOKEN не настроен"
+            exit 1
+          fi
+          echo "Секрет DEPLOY_TOKEN настроен"
 
       - name: Проверка версии Python
         run: docker run --rm python:3.12.7-slim python --version
@@ -73,6 +92,13 @@ jobs:
     name: Подготовка пакета
     runs-on: ubuntu-latest
     needs: unit_tests
+    if: |
+      (github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/') ||
+      startsWith(github.ref, 'refs/heads/hotfix/'))) ||
+      (github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main')
 
     steps:
       - name: Получение проекта
@@ -84,6 +110,7 @@ jobs:
           cp tickets.py README.md Dockerfile tickets.csv.example dist/
           echo "CI_COMMIT_SHA=$GITHUB_SHA" > dist/manifest.txt
           echo "CI_PIPELINE_ID=$GITHUB_RUN_ID" >> dist/manifest.txt
+          echo "APP_PORT=8103" >> dist/manifest.txt
           echo "FILES:" >> dist/manifest.txt
           printf '%s\n' tickets.py README.md Dockerfile tickets.csv.example >> dist/manifest.txt
 
@@ -93,3 +120,5 @@ jobs:
           name: tickets-service-package
           path: dist/
           retention-days: 7
+
+  
