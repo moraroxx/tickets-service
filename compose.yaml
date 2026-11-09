@@ -1,0 +1,30 @@
+
+services:
+  tickets:
+    build: .
+    image: edu/ticket-service:1.0
+    container_name: tickets-v1
+    ports:
+      - "8103:8003"
+    environment:
+      PORT: "8003"
+      MESSAGE: "Tickets online"
+      APP_VERSION: "1.0"
+      MODE: "production"
+    volumes:
+      - tickets-data:/data
+    restart: unless-stopped
+    mem_limit: 128m
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  tickets-data:
+    name: tickets-data
