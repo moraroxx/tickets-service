@@ -14,10 +14,8 @@ jobs:
       - name: Получение проекта
         uses: actions/checkout@v4
 
-      - name: Проверка версии Python и коммита
-        run: |
-          docker run --rm python:3.12.7-slim python --version
-          echo "Коммит: $GITHUB_SHA"
+      - name: Проверка версии Python
+        run: docker run --rm python:3.12.7-slim python --version
 
       - name: Проверка синтаксиса Python
         run: |
@@ -35,16 +33,13 @@ jobs:
 
           files = [
               p for p in Path(".").rglob("*.py")
-              if not any(x in p.parts for x in
-                         [".git", ".venv", "__pycache__"])
+              if not any(x in p.parts for x in [".git", ".venv", "__pycache__"])
           ]
 
           errors = []
 
           for file in files:
-              for number, line in enumerate(
-                  file.read_text(encoding="utf-8").splitlines(), 1
-              ):
+              for number, line in enumerate(file.read_text(encoding="utf-8").splitlines(), 1):
                   indentation = line[:len(line) - len(line.lstrip(" \t"))]
                   if "\t" in indentation:
                       errors.append(f"{file}:{number}")
@@ -74,7 +69,6 @@ jobs:
             python:3.12.7-slim \
             python -m unittest discover -s tests -v
 
-
   package:
     name: Подготовка пакета
     runs-on: ubuntu-latest
@@ -88,32 +82,10 @@ jobs:
         run: |
           mkdir -p dist
           cp tickets.py README.md Dockerfile tickets.csv.example dist/
-
           echo "CI_COMMIT_SHA=$GITHUB_SHA" > dist/manifest.txt
           echo "CI_PIPELINE_ID=$GITHUB_RUN_ID" >> dist/manifest.txt
           echo "FILES:" >> dist/manifest.txt
           printf '%s\n' tickets.py README.md Dockerfile tickets.csv.example >> dist/manifest.txt
-
-      - name: Публикация артефакта
-        uses: actions/upload-artifact@v4
-        with:
-          name: tickets-service-package
-          path: dist/
-          retention-days: 7
-
-
-    steps:
-      - name: Получение проекта
-        uses: actions/checkout@v4
-
-      - name: Формирование пакета
-        run: |
-          mkdir -p dist
-          cp app.py tickets.py Dockerfile dist/
-          echo "Commit: $GITHUB_SHA" > dist/manifest.txt
-          echo "Pipeline: $GITHUB_RUN_ID" >> dist/manifest.txt
-          echo "Files:" >> dist/manifest.txt
-          ls dist >> dist/manifest.txt
 
       - name: Публикация артефакта
         uses: actions/upload-artifact@v4
