@@ -18,7 +18,7 @@ class TicketService:
             "id": self.next_id,
             "title": title.strip(),
             "description": description.strip(),
-            "priority": "privet",
+            "priority": priority,
             "status": "open"
         }
 
